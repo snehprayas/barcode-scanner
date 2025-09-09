@@ -1,4 +1,3 @@
-hi
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,10 +14,11 @@ hi
       padding: 20px;
     }
     h1 { color: #d63384; }
-    video, canvas {
+    video {
       border: 2px solid #d63384;
       border-radius: 8px;
       max-width: 100%;
+      height: auto;
       margin-top: 10px;
     }
     #result {
@@ -35,7 +35,7 @@ hi
 </head>
 <body>
   <h1>📸 Capture & Scan Boarding Pass</h1>
-  <video id="video" autoplay></video>
+  <video id="video" autoplay playsinline></video>
   <button onclick="captureImage()">📷 Capture & Scan</button>
   <canvas id="canvas" style="display:none;"></canvas>
 
@@ -49,24 +49,31 @@ hi
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
 
-    // Start camera
+    // ✅ Start camera properly
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(stream => { video.srcObject = stream; })
+      .then(stream => {
+        video.srcObject = stream;
+      })
       .catch(err => alert("Camera access denied: " + err));
 
+    // ✅ Capture frame and decode with Quagga
     function captureImage() {
+      if (!video.videoWidth) {
+        alert("Camera not ready yet!");
+        return;
+      }
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = canvas.toDataURL("image/png");
 
       Quagga.decodeSingle({
-        src: imageData,
+        src: canvas.toDataURL("image/png"),
         numOfWorkers: 0,
         inputStream: { size: 800 },
-        decoder: { readers: ["code_128_reader"] } // CODE128 matches JsBarcode
+        decoder: { readers: ["code_128_reader"] } // must match JsBarcode type
       }, function(result) {
-        if(result && result.codeResult) {
+        if (result && result.codeResult) {
           const bookingId = result.codeResult.code.trim();
           showPassengerDetails(bookingId);
         } else {
@@ -75,6 +82,7 @@ hi
       });
     }
 
+    // ✅ Show details from passengers.js
     function showPassengerDetails(code) {
       const passenger = passengers[code];
       const resultDiv = document.getElementById("result");
