@@ -1,59 +1,82 @@
+hi
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sneh Prayas – Boarding Pass Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <title>Sneh Prayas – Capture & Scan</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
+      background: #ffe6f0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      background: #ffe6f0;
-      min-height: 100vh;
-      margin: 0;
       padding: 20px;
     }
-    h1 {
-      color: #d63384;
-    }
-    #reader {
-      width: 350px;
-      margin: 20px auto;
+    h1 { color: #d63384; }
+    video, canvas {
+      border: 2px solid #d63384;
+      border-radius: 8px;
+      max-width: 100%;
+      margin-top: 10px;
     }
     #result {
       margin-top: 20px;
+      background: #fff;
       padding: 15px;
-      border-radius: 10px;
-      background: white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
       width: 350px;
     }
-    .info-label {
-      font-weight: bold;
-      color: #444;
-    }
-    .info-value {
-      color: #000;
-    }
+    .info-label { font-weight: bold; color: #444; }
+    .info-value { color: #000; }
   </style>
 </head>
 <body>
-  <h1>🎟 Boarding Pass Scanner</h1>
+  <h1>📸 Capture & Scan Boarding Pass</h1>
+  <video id="video" autoplay></video>
+  <button onclick="captureImage()">📷 Capture & Scan</button>
+  <canvas id="canvas" style="display:none;"></canvas>
 
-  <!-- Scanner -->
-  <div id="reader"></div>
+  <div id="result">Scan result will appear here.</div>
 
-  <!-- Scan Result -->
-  <div id="result">Scan a boarding pass to see details here.</div>
-
-  <!-- Load Passenger Dataset -->
+  <!-- Passenger dataset -->
   <script src="passengers.js"></script>
 
   <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+
+    // Start camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => alert("Camera access denied: " + err));
+
+    function captureImage() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL("image/png");
+
+      Quagga.decodeSingle({
+        src: imageData,
+        numOfWorkers: 0,
+        inputStream: { size: 800 },
+        decoder: { readers: ["code_128_reader"] } // CODE128 matches JsBarcode
+      }, function(result) {
+        if(result && result.codeResult) {
+          const bookingId = result.codeResult.code.trim();
+          showPassengerDetails(bookingId);
+        } else {
+          document.getElementById("result").innerHTML = `<span style="color:red;">❌ No barcode detected. Try again.</span>`;
+        }
+      });
+    }
+
     function showPassengerDetails(code) {
-      const passenger = passengers[code];  // lookup by scanned booking ID
+      const passenger = passengers[code];
       const resultDiv = document.getElementById("result");
 
       if (passenger) {
@@ -70,24 +93,6 @@
         resultDiv.innerHTML = `<span style="color:red;">❌ No passenger found for ID: ${code}</span>`;
       }
     }
-
-    // Start QR/Barcode scanner
-    function onScanSuccess(decodedText) {
-      console.log(`Scanned code: ${decodedText}`);
-      showPassengerDetails(decodedText.trim());
-    }
-
-    function onScanError(errorMessage) {
-      // Ignore errors, scanner keeps running
-    }
-
-    const html5QrCode = new Html5Qrcode("reader");
-    html5QrCode.start(
-      { facingMode: "environment" }, // back camera
-      { fps: 10, qrbox: 250 },
-      onScanSuccess,
-      onScanError
-    );
   </script>
 </body>
 </html>
