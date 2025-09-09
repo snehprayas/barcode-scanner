@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sneh Prayas – Boarding Pass Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #ffe6f0;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #d63384;
+    }
+    #reader {
+      width: 350px;
+      margin: 20px auto;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 350px;
+    }
+    .info-label {
+      font-weight: bold;
+      color: #444;
+    }
+    .info-value {
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎟 Boarding Pass Scanner</h1>
+
+  <!-- Scanner -->
+  <div id="reader"></div>
+
+  <!-- Scan Result -->
+  <div id="result">Scan a boarding pass to see details here.</div>
+
+  <!-- Load Passenger Dataset -->
+  <script src="passengers.js"></script>
+
+  <script>
+    function showPassengerDetails(code) {
+      const passenger = passengers[code];  // lookup by scanned booking ID
+      const resultDiv = document.getElementById("result");
+
+      if (passenger) {
+        resultDiv.innerHTML = `
+          <div><span class="info-label">Booking ID:</span> <span class="info-value">${code}</span></div>
+          <div><span class="info-label">Name:</span> <span class="info-value">${passenger.name}</span></div>
+          <div><span class="info-label">Phone:</span> <span class="info-value">${passenger.phone}</span></div>
+          <div><span class="info-label">Gender:</span> <span class="info-value">${passenger.gender}</span></div>
+          <hr>
+          <div><span class="info-label">Onward:</span> Train ${passenger.onward.train}, ${passenger.onward.from} → ${passenger.onward.to}, Seat ${passenger.onward.seat}</div>
+          <div><span class="info-label">Return:</span> Train ${passenger.return.train}, ${passenger.return.from} → ${passenger.return.to}, Seat ${passenger.return.seat}</div>
+        `;
+      } else {
+        resultDiv.innerHTML = `<span style="color:red;">❌ No passenger found for ID: ${code}</span>`;
+      }
+    }
+
+    // Start QR/Barcode scanner
+    function onScanSuccess(decodedText) {
+      console.log(`Scanned code: ${decodedText}`);
+      showPassengerDetails(decodedText.trim());
+    }
+
+    function onScanError(errorMessage) {
+      // Ignore errors, scanner keeps running
+    }
+
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" }, // back camera
+      { fps: 10, qrbox: 250 },
+      onScanSuccess,
+      onScanError
+    );
+  </script>
+</body>
+</html>
